@@ -1,0 +1,5 @@
+# Python dependencies for tools/gen-protocol.py and tools/analyze-handlers.py.
+# Both scripts use only the Python standard library (re, sys, pathlib, collections),
+# so there is nothing to install. Python 3.8+ is enough.
+# This file exists so `pip install -r tools/requirements.txt` works in a fresh venv.
+# Add pinned packages below if you extend the tools.

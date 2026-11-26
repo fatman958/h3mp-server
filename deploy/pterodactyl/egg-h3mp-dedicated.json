@@ -1,0 +1,82 @@
+{
+  "_comment": "H3MP Dedicated Server Pterodactyl egg. Provide a direct HTTPS URL to a source ZIP when creating a server.",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-11-26T20:38:00+00:00",
+  "name": "H3MP Dedicated Server",
+  "author": "maintainer@h3mp-server.invalid",
+  "description": "Standalone .NET 8 dedicated server for the H3MP mod. Import this egg, provide a source ZIP URL, and allocate the game port for both TCP and UDP.",
+  "features": null,
+  "docker_images": {
+    "Pterodactyl Debian (self-contained .NET 8)": "ghcr.io/pterodactyl/yolks:debian"
+  },
+  "file_denylist": [],
+  "startup": "./H3MP.DedicatedServer --listen 0.0.0.0 --port {{SERVER_PORT}} --name {{SERVER_NAME}} --max-clients {{MAX_CLIENTS}} --tick-rate {{TICK_RATE}} --log-level {{LOG_LEVEL}} --log-file logs/h3mp-server.log --no-console",
+  "config": {
+    "files": "{}",
+    "startup": "{\"done\":\"listening on port\"}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -euo pipefail\n\nif [[ -z \"${SOURCE_URL:-}\" ]]; then\n  echo \"ERROR: Set SOURCE_URL to a direct HTTPS URL for a ZIP of the H3MP dedicated-server source.\" >&2\n  exit 1\nfi\ncase \"$SOURCE_URL\" in\n  https://*) ;;\n  *) echo \"ERROR: SOURCE_URL must use HTTPS.\" >&2; exit 1 ;;\nesac\n\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl unzip\nrm -rf /var/lib/apt/lists/*\nmkdir -p /mnt/server /tmp/h3mp-source\ncurl --fail --location --retry 3 --silent --show-error \"$SOURCE_URL\" --output /tmp/h3mp-source.zip\nunzip -q /tmp/h3mp-source.zip -d /tmp/h3mp-source\nPROJECT_FILE=\"$(find /tmp/h3mp-source -type f -path '*/src/H3MP.DedicatedServer/H3MP.DedicatedServer.csproj' -print -quit)\"\nif [[ -z \"$PROJECT_FILE\" ]]; then\n  echo \"ERROR: Source ZIP does not contain src/H3MP.DedicatedServer/H3MP.DedicatedServer.csproj.\" >&2\n  exit 1\nfi\n\ncase \"$(uname -m)\" in\n  x86_64) RUNTIME_ID=linux-x64 ;;\n  aarch64|arm64) RUNTIME_ID=linux-arm64 ;;\n  *) echo \"ERROR: Unsupported installer architecture: $(uname -m).\" >&2; exit 1 ;;\nesac\n\n            dotnet publish \"$PROJECT_FILE\" --configuration Release --output /mnt/server --runtime \"$RUNTIME_ID\" --self-contained true -p:RestoreSources=https://api.nuget.org/v3/index.json -p:PublishSingleFile=true -p:InvariantGlobalization=true\nif [[ ! -s /mnt/server/H3MP.DedicatedServer ]]; then\n  echo \"ERROR: dotnet publish did not produce the self-contained H3MP.DedicatedServer executable.\" >&2\n  exit 1\nfi\nchmod +x /mnt/server/H3MP.DedicatedServer\nmkdir -p /mnt/server/logs\nrm -rf /tmp/h3mp-source /tmp/h3mp-source.zip\necho \"H3MP Dedicated Server installed successfully.\"",
+      "container": "mcr.microsoft.com/dotnet/sdk:8.0",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Server source ZIP URL",
+      "description": "Direct HTTPS download URL for a ZIP of this server source tree. It must include src/H3MP.DedicatedServer/H3MP.DedicatedServer.csproj. Do not put credentials in the URL.",
+      "env_variable": "SOURCE_URL",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|url",
+      "field_type": "text"
+    },
+    {
+      "name": "Server name",
+      "description": "Name shown to H3MP clients.",
+      "env_variable": "SERVER_NAME",
+      "default_value": "H3MP-Dedicated-Server",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:64|regex:/^[A-Za-z0-9_.-]+$/",
+      "field_type": "text"
+    },
+    {
+      "name": "Maximum clients",
+      "description": "Maximum number of simultaneous clients.",
+      "env_variable": "MAX_CLIENTS",
+      "default_value": "5",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:1|max:1024",
+      "field_type": "text"
+    },
+    {
+      "name": "Tick rate",
+      "description": "Server tick rate in Hz (1-255).",
+      "env_variable": "TICK_RATE",
+      "default_value": "20",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:1|max:255",
+      "field_type": "text"
+    },
+    {
+      "name": "Log level",
+      "description": "Minimum log verbosity.",
+      "env_variable": "LOG_LEVEL",
+      "default_value": "Info",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:Trace,Debug,Info,Warn,Error",
+      "field_type": "text"
+    }
+  ]
+}

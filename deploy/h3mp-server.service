@@ -1,0 +1,24 @@
+# Install:  sudo cp deploy/h3mp-server.service /etc/systemd/system/
+#           sudo useradd --system --home /opt/h3mp --shell /usr/sbin/nologin h3mp
+#           publish to /opt/h3mp (dotnet publish -c Release -o /opt/h3mp), put Config.json there
+#           sudo systemctl enable --now h3mp-server
+[Unit]
+Description=H3MP dedicated server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=h3mp
+WorkingDirectory=/opt/h3mp
+ExecStart=/usr/bin/dotnet /opt/h3mp/H3MP.DedicatedServer.dll --config /opt/h3mp/Config.json --log-file /opt/h3mp/logs/server.log --no-console
+Restart=on-failure
+RestartSec=3
+# The server shuts down gracefully on SIGTERM (about 0.3 s).
+KillSignal=SIGTERM
+TimeoutStopSec=10
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/opt/h3mp
+
+[Install]
+WantedBy=multi-user.target
