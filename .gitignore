@@ -1,7 +1,0 @@
-bin/
-obj/
-*.user
-.vs/
-logs/
-./README.md
-tools/H3MP.ClientEmulator/README.md
